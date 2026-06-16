@@ -122,12 +122,20 @@ def process(df_raw):
         if not emp_name or emp_name in ('nan', '이름', ''):
             continue
 
+        # 반차 여부 확인 (휴가시간 4H = 반차)
+        is_half_day = vac is not None and abs(vac.total_seconds() - 4*3600) < 60
+
         if in_r is None or out_r is None:
-            note = '휴무/휴가' if (vac and vac.total_seconds() > 0) else '휴무'
+            if is_half_day:
+                note = '반차'
+            elif vac and vac.total_seconds() > 0:
+                note = '휴무/휴가'
+            else:
+                note = '휴무'
             detail_rows.append({
                 '일자': date_str, '이름': emp_name, '직위': emp_rank,
                 '실출근': '', '실퇴근': '', '인정출근': '', '인정퇴근': '',
-                '인정근무시간': '', '8H 대비': '', 'net_min': 0, '비고': note
+                '인정근무시간': '', '8H 대비': '0:00', 'net_min': 0, '비고': note
             })
             continue
 
@@ -135,10 +143,23 @@ def process(df_raw):
         adj_out = floor30(out_r)
         stay    = max(adj_out - adj_in, timedelta(0))
         work    = max(stay - LUNCH, timedelta(0))
-        diff_min = int((work - EIGHT_H).total_seconds() // 60)
+
+        # 반차: 체류시간 4H 이하 → 점심 미공제 / 4H 초과 → 점심 1H 공제, 기준 4H
+        if is_half_day:
+            stay = max(adj_out - adj_in, timedelta(0))
+            if stay <= timedelta(hours=4):
+                work = stay              # 점심 미공제
+            else:
+                work = stay - LUNCH      # 점심 1H 공제
+            base_h = timedelta(hours=4)
+            note   = '반차'
+        else:
+            base_h = EIGHT_H
+            note   = '08:00 이전→보정' if in_r < EIGHT_AM else ''
+
+        diff_min = int((work - base_h).total_seconds() // 60)
         net_min  = (abs(diff_min) // 30) * 30
         net_min  = net_min if diff_min >= 0 else -net_min
-        note     = '08:00 이전→보정' if in_r < EIGHT_AM else ''
 
         detail_rows.append({
             '일자': date_str, '이름': emp_name, '직위': emp_rank,
