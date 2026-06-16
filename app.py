@@ -10,7 +10,8 @@ import math
 st.set_page_config(page_title="선택적 근무 · 초과시간 관리", page_icon="⏱", layout="wide")
 st.markdown("""
 <style>
-[data-testid="stFileUploaderDropzone"] { display: none; }
+[data-testid="stFileUploaderDropzoneInstructions"] { display: none; }
+[data-testid="stFileUploaderDropzone"] > div:last-child { display: none; }
 </style>
 """, unsafe_allow_html=True)
 
