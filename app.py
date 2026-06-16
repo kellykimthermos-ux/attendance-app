@@ -89,12 +89,16 @@ EIGHT_H  = timedelta(hours=8)
 
 # ── 파일 타입 감지 ─────────────────────────────────────────────
 def detect_file_type(xl):
-    """부서 파일 vs 개인 파일 구분"""
+    """부서 파일 vs 개인 파일 구분 - P_ 시트 우선"""
     sheets = xl.sheet_names
+    # P_ 시트 우선 탐색
     for sheet in sheets:
-        if 'P_써모스코리아' in sheet or '기간별 근태현황' in sheet:
+        if sheet.startswith('P_') and '근태현황' in sheet:
             return 'team', sheet
-        if '월간 근태현황' in sheet or '근태현황' in sheet:
+    for sheet in sheets:
+        if '기간별 근태현황' in sheet:
+            return 'team', sheet
+        if '월간 근태현황' in sheet or ('근태현황' in sheet and not sheet.startswith('U_')):
             return 'personal', sheet
     return 'unknown', sheets[0]
 
@@ -294,12 +298,15 @@ def to_excel(detail, summary):
     return buf
 
 # ── 메인 UI ────────────────────────────────────────────────────
+st.markdown('''
+<p style="font-size:13px;color:#333333;margin-bottom:6px;">
+    📂 인트라넷에서 다운받은 RAW 엑셀데이터를 파일명 변경, 가공없이 그대로 업로드해주세요.
+</p>
+''', unsafe_allow_html=True)
 uploaded = st.file_uploader(
-    "근태현황 파일 업로드",
-    type=['xlsx'],
-    help="부서_기간별근태현황 (팀 전체) 또는 개인_월간근태현황 파일 모두 가능"
+    "개인 월간 파일 또는 팀 전체 파일(이름 마스킹처리 권장)을 업로드하세요.",
+    type=['xlsx']
 )
-st.markdown('<p style="font-size:12px;color:#95A5A6;">📂 부서 전체 파일 또는 개인 월간 파일 모두 업로드 가능합니다</p>', unsafe_allow_html=True)
 
 if uploaded:
     with st.spinner("계산 중..."):
