@@ -49,15 +49,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-st.markdown("""
-<div class="rule-box">
-    📌 <strong>계산 기준</strong> &nbsp;|&nbsp;
-    인정출근 = 실제 출근시각 <strong>30분 올림</strong> (08:00 이전은 08:00 고정) &nbsp;·&nbsp;
-    인정퇴근 = 실제 퇴근시각 <strong>30분 내림</strong> &nbsp;·&nbsp;
-    인정근무 = 체류시간 − 점심 1H &nbsp;·&nbsp;
-    8H 초과 → <strong>+적립</strong> / 8H 미달 → <strong>−차감</strong> (30분 단위)
-</div>
-""", unsafe_allow_html=True)
+
 
 # ── 헬퍼 함수 ──────────────────────────────────────────────────
 def parse_hms(s):
@@ -304,15 +296,28 @@ def to_excel(detail, summary):
     return buf
 
 # ── 메인 UI ────────────────────────────────────────────────────
-st.markdown('''
-<p style="font-size:13px;color:#333333;margin-bottom:6px;">
-    📂 인트라넷에서 다운받은 RAW 엑셀데이터를 파일명 변경, 가공없이 그대로 업로드해주세요.
+with st.sidebar:
+    st.markdown('''
+<p style="font-size:11px;font-weight:600;color:#7F8C8D;letter-spacing:0.5px;text-transform:uppercase;margin:0 0 8px;">파일 업로드</p>
+<p style="font-size:12px;color:#555555;line-height:1.6;margin:0 0 12px;">
+    📂 인트라넷에서 다운받은 RAW 엑셀데이터를<br>파일명 변경, 가공없이 그대로 업로드해주세요.
 </p>
 ''', unsafe_allow_html=True)
-uploaded = st.file_uploader(
-    "개인 월간 파일 또는 팀 전체 파일(이름 마스킹처리 권장)을 업로드하세요.",
-    type=['xlsx']
-)
+    uploaded = st.file_uploader(
+        "개인 월간 파일 또는 팀 전체 파일(이름 마스킹처리 권장)을 업로드하세요.",
+        type=['xlsx']
+    )
+    st.markdown('''
+<hr style="margin:16px 0;border:none;border-top:0.5px solid #E0E8F5;">
+<p style="font-size:11px;color:#95A5A6;line-height:1.7;margin:0;">
+    <strong>계산 기준</strong><br>
+    출근 30분 올림<br>(08:00 이전 → 08:00 고정)<br>
+    퇴근 30분 내림<br>
+    점심 1H 공제<br>
+    8H 초과 → +적립<br>
+    8H 미달 → −차감 (30분 단위)
+</p>
+''', unsafe_allow_html=True)
 
 if uploaded:
     with st.spinner("계산 중..."):
