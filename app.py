@@ -350,6 +350,18 @@ with st.sidebar:
     8H 초과 → +적립<br>
     8H 미달 → −차감 (30분 단위)
 </p>
+<hr style="margin:12px 0;border:none;border-top:0.5px solid #E0E8F5;">
+<p style="font-size:11px;color:#95A5A6;line-height:1.8;margin:0;">
+    <strong style="color:#7F8C8D;">반차 계산 기준</strong><br>
+    기준근무: 4H<br>
+    체류 4H 이하 → 점심 미공제<br>
+    체류 4H 초과 → 점심 1H 공제<br><br>
+    <span style="color:#B0B0B0;">예시</span><br>
+    08:00 출근 → 12:00 퇴근<br>
+    체류 4H → 인정 4H ✓<br><br>
+    09:00 출근 → 14:00 퇴근<br>
+    체류 5H − 1H → 인정 4H ✓
+</p>
 """, unsafe_allow_html=True)
 
 # ── 메인 영역 ──────────────────────────────────────────────────
