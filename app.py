@@ -109,19 +109,38 @@ def detect_file_type(xl):
     return 'unknown', sheets[0]
 
 # ── 계산 로직 (공통) ───────────────────────────────────────────
+FOUR_H = timedelta(hours=4)
+
 def calc_row(in_r, out_r, vac):
+    # 반차 여부: 총휴가시간이 4H인 경우
+    is_half = vac is not None and abs(vac.total_seconds() - 4*3600) < 60
+
     if in_r is None or out_r is None:
-        note = '휴무/휴가' if (vac and vac.total_seconds() > 0) else '휴무'
+        if is_half:
+            note = '반차'
+        elif vac and vac.total_seconds() > 0:
+            note = '휴무/휴가'
+        else:
+            note = '휴무'
         return None, None, None, None, 0, note
 
     adj_in  = EIGHT_AM if in_r < EIGHT_AM else ceil30(in_r)
     adj_out = floor30(out_r)
     stay    = max(adj_out - adj_in, timedelta(0))
-    work    = max(stay - LUNCH, timedelta(0))
-    diff_min = int((work - EIGHT_H).total_seconds() // 60)
+
+    if is_half:
+        # 반차: 체류 4H 이하 → 점심 미공제 / 4H 초과 → 점심 1H 공제, 기준 4H
+        work   = stay if stay <= FOUR_H else stay - LUNCH
+        base_h = FOUR_H
+        note   = '반차'
+    else:
+        work   = max(stay - LUNCH, timedelta(0))
+        base_h = EIGHT_H
+        note   = '08:00 이전→보정' if in_r < EIGHT_AM else ''
+
+    diff_min = int((work - base_h).total_seconds() // 60)
     net_min  = (abs(diff_min) // 30) * 30
     net_min  = net_min if diff_min >= 0 else -net_min
-    note     = '08:00 이전→보정' if in_r < EIGHT_AM else ''
     return adj_in, adj_out, work, fmt_net(net_min), net_min, note
 
 # ── 팀 파일 파싱 ───────────────────────────────────────────────
