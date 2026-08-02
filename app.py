@@ -595,95 +595,98 @@ if uploaded:
                     work_rows['net_min']  = pd.to_numeric(work_rows['net_min'], errors='coerce').fillna(0)
                     work_rows_full = work_rows[~work_rows['비고'].str.contains('휴가|반차', na=False)]
 
-                    team_avg = work_rows['work_min'].mean()
-                    team_max = work_rows['work_min'].max()
-                    team_max_row = work_rows.loc[work_rows['work_min'].idxmax()]
-                    team_min = work_rows_full['work_min'].min() if len(work_rows_full) > 0 else None
-                    team_min_row = work_rows_full.loc[work_rows_full['work_min'].idxmin()] if len(work_rows_full) > 0 else None
-                    team_surplus_days = int((work_rows['net_min'] > 0).sum())
-                    team_deficit_days = int((work_rows['net_min'] < 0).sum())
-                    min_name = team_min_row['이름'] if team_min_row is not None else '-'
-                    min_date = team_min_row['일자'] if team_min_row is not None else ''
+                    if len(work_rows) == 0:
+                        st.info("조회기간 내 평일 근무 데이터가 없어 통계를 표시할 수 없습니다.")
+                    else:
+                        team_avg = work_rows['work_min'].mean()
+                        team_max = work_rows['work_min'].max()
+                        team_max_row = work_rows.loc[work_rows['work_min'].idxmax()]
+                        team_min = work_rows_full['work_min'].min() if len(work_rows_full) > 0 else None
+                        team_min_row = work_rows_full.loc[work_rows_full['work_min'].idxmin()] if len(work_rows_full) > 0 else None
+                        team_surplus_days = int((work_rows['net_min'] > 0).sum())
+                        team_deficit_days = int((work_rows['net_min'] < 0).sum())
+                        min_name = team_min_row['이름'] if team_min_row is not None else '-'
+                        min_date = team_min_row['일자'] if team_min_row is not None else ''
 
-                    st.markdown(f'''
-<div class="card-wrap">
-    <div class="summary-card"><div class="label">팀 일 평균</div><div class="value">{min_to_hm(team_avg)}</div><div class="sub">조회기간 전체</div></div>
-    <div class="summary-card"><div class="label">최장 근무일</div><div class="value" style="color:#2a78d6;">{min_to_hm(team_max)}</div><div class="sub">{team_max_row["이름"]} · {team_max_row["일자"]}</div></div>
-    <div class="summary-card"><div class="label">최단 근무일</div><div class="value" style="color:#888;">{min_to_hm(team_min)}</div><div class="sub">{min_name} · {min_date}</div></div>
-    <div class="summary-card"><div class="label">초과 적립일</div><div class="value" style="color:#1baf7a;">{team_surplus_days}일</div><div class="sub">팀 합산</div></div>
-    <div class="summary-card"><div class="label">차감 발생일</div><div class="value" style="color:#e34948;">{team_deficit_days}일</div><div class="sub">팀 합산</div></div>
-</div>
-''', unsafe_allow_html=True)
-
-                    colors = ['#2a78d6','#1baf7a','#eda100','#4a3aa7','#e34948','#eb6834']
-                    person_stats = []
-                    max_avg = 0
-                    for name in detail['이름'].unique():
-                        g = work_rows[work_rows['이름'] == name]
-                        g_full = work_rows_full[work_rows_full['이름'] == name]
-                        if len(g) == 0: continue
-                        avg = g['work_min'].mean()
-                        max_avg = max(max_avg, avg)
-                        person_stats.append({
-                            'name': name, 'avg': avg,
-                            'max': g['work_min'].max(),
-                            'min': g_full['work_min'].min() if len(g_full) > 0 else None,
-                            'surplus_days': int((g['net_min'] > 0).sum()),
-                            'deficit_days': int((g['net_min'] < 0).sum()),
-                            'work_days': len(g)
-                        })
-
-                    st.markdown('<div style="background:#f8f9fa;border-radius:12px;padding:1.25rem;margin-bottom:16px;">', unsafe_allow_html=True)
-                    st.markdown('<div style="font-size:13px;font-weight:500;margin-bottom:16px;">팀원별 일 평균 근무시간</div>', unsafe_allow_html=True)
-                    for i, ps in enumerate(person_stats):
-                        bar_pct = int((ps['avg'] / max(max_avg, 600)) * 100)
-                        base_pct = int((480 / max(max_avg, 600)) * 100)
-                        color = colors[i % len(colors)]
                         st.markdown(f'''
-<div style="margin-bottom:16px;">
-    <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px;">
-        <span style="color:#555;">{ps["name"]}</span><span style="font-weight:500;">{min_to_hm(ps["avg"])}</span>
+    <div class="card-wrap">
+        <div class="summary-card"><div class="label">팀 일 평균</div><div class="value">{min_to_hm(team_avg)}</div><div class="sub">조회기간 전체</div></div>
+        <div class="summary-card"><div class="label">최장 근무일</div><div class="value" style="color:#2a78d6;">{min_to_hm(team_max)}</div><div class="sub">{team_max_row["이름"]} · {team_max_row["일자"]}</div></div>
+        <div class="summary-card"><div class="label">최단 근무일</div><div class="value" style="color:#888;">{min_to_hm(team_min)}</div><div class="sub">{min_name} · {min_date}</div></div>
+        <div class="summary-card"><div class="label">초과 적립일</div><div class="value" style="color:#1baf7a;">{team_surplus_days}일</div><div class="sub">팀 합산</div></div>
+        <div class="summary-card"><div class="label">차감 발생일</div><div class="value" style="color:#e34948;">{team_deficit_days}일</div><div class="sub">팀 합산</div></div>
     </div>
-    <div style="position:relative;background:#e0e0e0;border-radius:4px;height:10px;">
-        <div style="width:{bar_pct}%;height:100%;background:{color};border-radius:4px;"></div>
-        <div style="position:absolute;left:{base_pct}%;top:-3px;width:1px;height:16px;background:#999;"></div>
-    </div>
-    <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:4px;font-size:11px;color:#888;">
-        <span>초과 <span style="color:#1baf7a;font-weight:500;">{ps["surplus_days"]}일</span></span>
-        <span>차감 <span style="color:#e34948;font-weight:500;">{ps["deficit_days"]}일</span></span>
-    </div>
-</div>
-''', unsafe_allow_html=True)
+    ''', unsafe_allow_html=True)
 
-                    st.markdown('''
-<div style="padding-top:10px;border-top:0.5px solid #ddd;">
-    <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
-        <div style="width:1px;height:12px;background:#999;"></div>
-        <span style="font-size:11px;color:#888;">8H 기준선</span>
-    </div>
-    <div style="font-size:11px;color:#aaa;line-height:1.8;">
-        일 평균 · 최장 근무: 반차 포함하여 계산<br>
-        최단 근무: 연차 · 반차 불포함하여 계산<br>
-        초과일 · 차감일: 인정근무 기준 8H 대비 30분 단위 가감일 수
-    </div>
-</div></div>
-''', unsafe_allow_html=True)
+                        colors = ['#2a78d6','#1baf7a','#eda100','#4a3aa7','#e34948','#eb6834']
+                        person_stats = []
+                        max_avg = 0
+                        for name in detail['이름'].unique():
+                            g = work_rows[work_rows['이름'] == name]
+                            g_full = work_rows_full[work_rows_full['이름'] == name]
+                            if len(g) == 0: continue
+                            avg = g['work_min'].mean()
+                            max_avg = max(max_avg, avg)
+                            person_stats.append({
+                                'name': name, 'avg': avg,
+                                'max': g['work_min'].max(),
+                                'min': g_full['work_min'].min() if len(g_full) > 0 else None,
+                                'surplus_days': int((g['net_min'] > 0).sum()),
+                                'deficit_days': int((g['net_min'] < 0).sum()),
+                                'work_days': len(g)
+                            })
 
-                    stats_df = pd.DataFrame([{
-                        '이름': ps['name'], '일 평균': min_to_hm(ps['avg']),
-                        '최장 근무': min_to_hm(ps['max']), '최단 근무': min_to_hm(ps['min']),
-                        '초과일': ps['surplus_days'], '차감일': ps['deficit_days'], '근무일수': ps['work_days']
-                    } for ps in person_stats])
-                    st.dataframe(stats_df, use_container_width=True, hide_index=True,
-                        column_config={
-                            '이름': st.column_config.TextColumn('이름', width=100),
-                            '일 평균': st.column_config.TextColumn('일 평균', width=90),
-                            '최장 근무': st.column_config.TextColumn('최장 근무', width=90),
-                            '최단 근무': st.column_config.TextColumn('최단 근무', width=90),
-                            '초과일': st.column_config.NumberColumn('초과일', width=70),
-                            '차감일': st.column_config.NumberColumn('차감일', width=70),
-                            '근무일수': st.column_config.NumberColumn('근무일수', width=80),
-                        })
+                        st.markdown('<div style="background:#f8f9fa;border-radius:12px;padding:1.25rem;margin-bottom:16px;">', unsafe_allow_html=True)
+                        st.markdown('<div style="font-size:13px;font-weight:500;margin-bottom:16px;">팀원별 일 평균 근무시간</div>', unsafe_allow_html=True)
+                        for i, ps in enumerate(person_stats):
+                            bar_pct = int((ps['avg'] / max(max_avg, 600)) * 100)
+                            base_pct = int((480 / max(max_avg, 600)) * 100)
+                            color = colors[i % len(colors)]
+                            st.markdown(f'''
+    <div style="margin-bottom:16px;">
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px;">
+            <span style="color:#555;">{ps["name"]}</span><span style="font-weight:500;">{min_to_hm(ps["avg"])}</span>
+        </div>
+        <div style="position:relative;background:#e0e0e0;border-radius:4px;height:10px;">
+            <div style="width:{bar_pct}%;height:100%;background:{color};border-radius:4px;"></div>
+            <div style="position:absolute;left:{base_pct}%;top:-3px;width:1px;height:16px;background:#999;"></div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:4px;font-size:11px;color:#888;">
+            <span>초과 <span style="color:#1baf7a;font-weight:500;">{ps["surplus_days"]}일</span></span>
+            <span>차감 <span style="color:#e34948;font-weight:500;">{ps["deficit_days"]}일</span></span>
+        </div>
+    </div>
+    ''', unsafe_allow_html=True)
+
+                        st.markdown('''
+    <div style="padding-top:10px;border-top:0.5px solid #ddd;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+            <div style="width:1px;height:12px;background:#999;"></div>
+            <span style="font-size:11px;color:#888;">8H 기준선</span>
+        </div>
+        <div style="font-size:11px;color:#aaa;line-height:1.8;">
+            일 평균 · 최장 근무: 반차 포함하여 계산<br>
+            최단 근무: 연차 · 반차 불포함하여 계산<br>
+            초과일 · 차감일: 인정근무 기준 8H 대비 30분 단위 가감일 수
+        </div>
+    </div></div>
+    ''', unsafe_allow_html=True)
+
+                        stats_df = pd.DataFrame([{
+                            '이름': ps['name'], '일 평균': min_to_hm(ps['avg']),
+                            '최장 근무': min_to_hm(ps['max']), '최단 근무': min_to_hm(ps['min']),
+                            '초과일': ps['surplus_days'], '차감일': ps['deficit_days'], '근무일수': ps['work_days']
+                        } for ps in person_stats])
+                        st.dataframe(stats_df, use_container_width=True, hide_index=True,
+                            column_config={
+                                '이름': st.column_config.TextColumn('이름', width=100),
+                                '일 평균': st.column_config.TextColumn('일 평균', width=90),
+                                '최장 근무': st.column_config.TextColumn('최장 근무', width=90),
+                                '최단 근무': st.column_config.TextColumn('최단 근무', width=90),
+                                '초과일': st.column_config.NumberColumn('초과일', width=70),
+                                '차감일': st.column_config.NumberColumn('차감일', width=70),
+                                '근무일수': st.column_config.NumberColumn('근무일수', width=80),
+                            })
 
             st.divider()
             fname     = f"선택적근무_잔여시간_{period.replace(' ','').replace('~','_')}.xlsx" if period else "선택적근무_잔여시간.xlsx"
