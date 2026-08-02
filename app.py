@@ -190,50 +190,6 @@ def parse_personal(df_all, sheet_name):
     df_data = df_data[df_data['일자'].notna()].reset_index(drop=True)
     return df_data, period, name
 
-# ── 토요일 근무 계산 ──────────────────────────────────────────
-def process_saturday(df_raw):
-    """토요일 근무: 보정 없음, 점심 미공제, 최대 8H 인정"""
-    rows = []
-    for _, r in df_raw.iterrows():
-        emp_name = str(r['이름'])
-        if not emp_name or emp_name in ('nan', '이름', ''): continue
-
-        date_str = str(r['일자'])
-        try:
-            dt = pd.to_datetime(date_str, format='%Y%m%d', errors='coerce')
-            if dt is None or dt.weekday() != 5: continue  # 토요일만
-        except: continue
-
-        in_r  = parse_hms(r['출근시간'])
-        out_r = parse_hms(r['퇴근시간'])
-        if in_r is None or out_r is None: continue
-
-        # 보정 없이 실제 시간 그대로, 점심 미공제, 최대 8H
-        actual = max(out_r - in_r, timedelta(0))
-        work   = min(actual, timedelta(hours=8))
-        work_min = int(work.total_seconds() // 60)
-        blocks   = work_min // 30  # 30분 단위 블록
-
-        if work >= timedelta(hours=8):
-            option = "대체휴일 1일 또는 마이핏 16블록(8H)"
-        elif blocks > 0:
-            h = work_min // 60; m = work_min % 60
-            option = f"마이핏 {blocks}블록({h}H{':'+str(m)+'분' if m else ''})"
-        else:
-            option = "8H 미달 (해당 없음)"
-
-        rows.append({
-            '날짜': date_str,
-            '이름': emp_name,
-            '출근': fmt_td(in_r),
-            '퇴근': fmt_td(out_r),
-            '실근무': f"{int(actual.total_seconds()//3600)}:{int((actual.total_seconds()%3600)//60):02d}",
-            '인정근무': f"{work_min//60}:{work_min%60:02d}",
-            '선택 가능': option,
-        })
-
-    return pd.DataFrame(rows)
-
 # ── 공통 계산 ──────────────────────────────────────────────────
 def process(df_raw):
     detail_rows = []
@@ -247,13 +203,6 @@ def process(df_raw):
 
         if not emp_name or emp_name in ('nan', '이름', ''):
             continue
-
-        # 토요일은 별도 계산, 평일 계산에서 제외
-        try:
-            dt = pd.to_datetime(date_str, format='%Y%m%d', errors='coerce')
-            if dt is not None and dt.weekday() == 5:
-                continue
-        except: pass
 
         adj_in, adj_out, work, net_str, net_min, note = calc_row(in_r, out_r, vac)
 
@@ -524,9 +473,6 @@ if uploaded:
 
             tab1, tab2, tab3 = st.tabs(["📊 누적잔여 요약", "📋 일별 상세", "📈 통계"])
 
-            # 토요일 근무 데이터 계산
-            sat_df = process_saturday(df_data) if f_type == 'team' else pd.DataFrame()
-
             with tab1:
                 st.dataframe(summary, use_container_width=True, hide_index=True,
                     column_config={
@@ -536,25 +482,6 @@ if uploaded:
                         "사용가능 블록(30분)": st.column_config.NumberColumn("사용가능 블록(30분)", width=160),
                         "비고":             st.column_config.TextColumn("비고", width=280),
                     })
-
-                if f_type == 'team' and len(sat_df) > 0:
-                    st.markdown("""
-<hr style="margin:24px 0 16px;border:none;border-top:1px solid #E0E8F5;">
-<p style="font-size:13px;font-weight:600;color:#1F3864;margin:0 0 4px;">🗓️ 토요일 근무 현황</p>
-<p style="font-size:12px;color:#7F8C8D;margin:0 0 12px;">
-    보정 없음 · 점심 미공제 · 최대 8H 인정 · 대체휴일 또는 마이핏(30분 단위) 선택 후 팀장 승인
-</p>
-""", unsafe_allow_html=True)
-                    st.dataframe(sat_df, use_container_width=True, hide_index=True,
-                        column_config={
-                            '날짜':     st.column_config.TextColumn('날짜', width=100),
-                            '이름':     st.column_config.TextColumn('이름', width=90),
-                            '출근':     st.column_config.TextColumn('출근', width=80),
-                            '퇴근':     st.column_config.TextColumn('퇴근', width=80),
-                            '실근무':   st.column_config.TextColumn('실근무', width=80),
-                            '인정근무': st.column_config.TextColumn('인정근무(최대8H)', width=130),
-                            '선택 가능': st.column_config.TextColumn('선택 가능', width=280),
-                        })
 
             with tab2:
                 if f_type == 'team':
@@ -598,8 +525,10 @@ if uploaded:
                         if m is None: return '-'
                         return f"{int(m)//60}:{int(m)%60:02d}"
 
-                    work_rows['work_min'] = work_rows['인정근무시간'].apply(hm_to_min)
+                    work_rows['work_min'] = pd.to_numeric(work_rows['인정근무시간'].apply(hm_to_min), errors='coerce')
                     work_rows = work_rows[work_rows['work_min'].notna()]
+                    work_rows['work_min'] = work_rows['work_min'].astype(float)
+                    work_rows['net_min']  = pd.to_numeric(work_rows['net_min'], errors='coerce').fillna(0)
                     work_rows_full = work_rows[~work_rows['비고'].str.contains('휴가|반차', na=False)]
 
                     team_avg = work_rows['work_min'].mean()
